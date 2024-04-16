@@ -3,6 +3,7 @@ from InquirerPy.validator import PasswordValidator
 import os
 import db
 import pandas as pd
+import tabulate
 
 def clear_screen(): 
     _ = os.system('cls') if os.name == 'nt' else os.system('clear')
@@ -56,9 +57,11 @@ def login():
 def accessJobs(userID):
     while True:
         clear_screen()
+        jobsDisplay = db.get_jobs_display()
         jobs = db.get_jobs()
         jobs_df = pd.DataFrame(jobs, columns=["JobID", "UserID", "JobName", "JobDescription", "JobLocation", "JobSalary"])
-        print(jobs_df)
+        jobsDisplay_df = pd.DataFrame(jobsDisplay, columns=["JobID", "JobName", "JobLocation", "JobSalary"])
+        print(tabulate.tabulate(jobsDisplay_df, headers='keys', tablefmt='rounded_outline', showindex=False, maxcolwidths=30))
         print("\n")
         action = inquirer.select(
             message="Job search/Internship",
@@ -103,16 +106,13 @@ def accessJobs(userID):
             job = jobs_df[jobs_df["JobID"] == int(job_id)]
             if job["UserID"].values[0] == userID:
                 db.remove_job(int(job_id))
+                print("Job removed successfully.")
             else:
                 print("You do not have permission to remove this job.")
             input("Press Enter to continue...")
         elif action == "Save a job":
             job_id = inquirer.text(message="Enter the job ID to save:").execute()
-            if int(job_id) > len(jobs_df):
-                print("Invalid job ID.")
-                continue
-            job = jobs_df[jobs_df["JobID"] == int(job_id)]
-            db.save_job(userID, int(job_id))
+            db.save_job(userID, job_id)
             print("Job saved successfully.")
             input("Press Enter to continue...")
         elif action == "Apply for a job":
@@ -126,8 +126,8 @@ def accessJobs(userID):
             input("Press Enter to continue...")
         elif action == "View saved jobs":
             saved_jobs = db.get_saved_jobs(userID)
-            saved_jobs_df = pd.DataFrame(saved_jobs, columns=["JobID", "JobName", "JobDescription", "JobLocation", "JobSalary"])
-            print(saved_jobs_df)
+            saved_jobs_df = pd.DataFrame(saved_jobs, columns=["JobID", "JobName", "JobLocation", "JobSalary"])
+            print(tabulate.tabulate(saved_jobs_df, headers='keys', tablefmt='rounded_outline', showindex=False))
             print("\n")
             input("Press Enter to continue...")
         else:
@@ -142,6 +142,7 @@ def accessFriends(userID):
                 "View friends",
                 "Add a friend",
                 "Remove a friend",
+                "Directory",
                 "Return to main menu"
             ],
         ).execute()
@@ -150,12 +151,12 @@ def accessFriends(userID):
         elif action == "View friends":
             friends = db.get_friends(userID)
             friends_df = pd.DataFrame(friends, columns=["FirstName", "LastName", "Username", "Email"])
-            print(friends_df)
+            print(tabulate.tabulate(friends_df, headers='keys', tablefmt='rounded_outline', showindex=False))
             print("\n")
             input("Press Enter to continue...")
         elif action == "Add a friend":
             friend_username = inquirer.text(message="Enter the username of the friend you want to add:").execute()
-            friend = db.get_user(friend_username)
+            friend = db.get_userID(friend_username)
             if friend is not None:
                 db.add_friend(userID, friend[0])
                 print("Friend added successfully.")
@@ -171,32 +172,58 @@ def accessFriends(userID):
             else:
                 print("Friend not found.")
             input("Press Enter to continue...")
+        elif action == "Directory":
+            users = db.get_users()
+            users_df = pd.DataFrame(users, columns=["UserID", "FirstName", "LastName", "Username", "Email"])
+            print(tabulate.tabulate(users_df, headers='keys', tablefmt='rounded_outline', showindex=False))
+            print("\n")
+            input("Press Enter to continue...")
         else:
             continue
 
 def accessMessages(userID):
-    action = inquirer.select(
-        message="Message management",
-        choices=[
-            "Send a message",
-            "View messages",
-            "Return to main menu"
-        ],
-    ).execute()
-    if action == "Return to main menu":
-        return
-    elif action == "Send a message":
-        friend_username = inquirer.text(message="Enter the username of the friend you want to message:").execute()
-        friend = db.get_user(friend_username)
-        if friend is not None:
-            message = inquirer.text(message="Enter your message:").execute()
-            db.send_message(userID, friend[0], message)
-            print("Message sent successfully.")
-        else:
-            print("Friend not found.")
-        input("Press Enter to continue...")
-    elif action == "View messages":
-        messages = db.get_messages(userID)
+    while True:
+        clear_screen()
+        action = inquirer.select(
+            message="Message management",
+            choices=[
+                "Send a message",
+                "View all messages",
+                "View unread messages",
+                "Return to main menu"
+            ],
+        ).execute()
+        if action == "Return to main menu":
+            return
+        elif action == "Send a message":
+            friend_username = inquirer.text(message="Enter the username of the friend you want to message:").execute()
+            friend = db.get_user(friend_username)
+            #check if the friend_username is friend of the current user
+            
+            if friend is not None:
+                message = inquirer.text(message="Enter your message:").execute()
+                db.send_message(userID, friend[0], message)
+                print("Message sent successfully.")
+            else:
+                print("Friend not found.")
+            input("Press Enter to continue...")
+            
+        elif action == "View all messages":
+            messages = db.get_messages(userID)
+            messages_df = pd.DataFrame(messages, columns=["MessageID","Date", "Sender", "Message Content", "Seen"])
+            print(tabulate.tabulate(messages_df, headers='keys', tablefmt='rounded_outline', showindex=False))
+            input("\nPress Enter to continue...")
+            
+        elif action == "View unread messages":
+            messages = db.get_unread_messages(userID)
+            messages_df = pd.DataFrame(messages, columns=["MessageID","Date", "Sender", "Message Content"])
+            print(tabulate.tabulate(messages_df, headers='keys', tablefmt='rounded_outline', showindex=False))
+            view_message = inquirer.text(message="Enter the message ID to view the message:").execute() 
+            if view_message == "":
+                continue
+            print(messages_df[messages_df["MessageID"] == int(view_message)]["Message Content"].values[0])
+            db.mark_message_as_seen(userID,int(view_message))
+            input("Press Enter to continue...")
 
 def use_app(userID):
     while True:
@@ -219,6 +246,7 @@ def use_app(userID):
             accessJobs(userID)
         elif action == "InCollege Important Links":
             print("InCollege Important Links")
+            
         elif action == "Friends":
             accessFriends(userID)
         elif action == "Tier check":
