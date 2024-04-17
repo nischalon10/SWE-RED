@@ -100,16 +100,18 @@ def accessJobs(userID):
             input("Press Enter to continue...")
         elif action == "Remove a job":
             job_id = inquirer.text(message="Enter the job ID to remove from listing:").execute()
-            if int(job_id) > len(jobs_df):
-                print("Invalid job ID.")
-                continue
             job = jobs_df[jobs_df["JobID"] == int(job_id)]
             if job["UserID"].values[0] == userID:
                 db.remove_job(int(job_id))
                 print("Job removed successfully.")
+                input("Press Enter to continue...")
             else:
-                print("You do not have permission to remove this job.")
-            input("Press Enter to continue...")
+                inquirer.confirm(
+                    message="Unable to remove job.",
+                    long_instruction="You can only remove jobs that you have posted.",
+                    instruction="\n(Press Enter to continue...)",
+                    default=False
+                ).execute()
         elif action == "Save a job":
             job_id = inquirer.text(message="Enter the job ID to save:").execute()
             db.save_job(userID, job_id)
@@ -117,9 +119,6 @@ def accessJobs(userID):
             input("Press Enter to continue...")
         elif action == "Apply for a job":
             job_id = inquirer.text(message="Enter the job ID to apply:").execute()
-            if int(job_id) > len(jobs_df):
-                print("Invalid job ID.")
-                continue
             job = jobs_df[jobs_df["JobID"] == int(job_id)]
             db.apply_job(userID, int(job_id))
             print("Job applied successfully.")
@@ -225,6 +224,54 @@ def accessMessages(userID):
             db.mark_message_as_seen(userID,int(view_message))
             input("Press Enter to continue...")
 
+def accessLinks(userID):
+    while True:
+        clear_screen()
+        action = inquirer.select(
+            message="InCollege Important Links",
+            choices=[
+                "InCollege Learning",
+                "InCollege Salary",
+                "InCollege Resume Builder",
+                "Return to main menu"
+            ],
+        ).execute()
+        if action == "Return to main menu":
+            break
+        else:
+            print("Link will be available soon.")
+            input("Press Enter to continue...")
+
+def accessNotifications(userID):
+    new_friend_requests = db.get_friend_requests(userID)
+    new_friend_requests_df = pd.DataFrame(new_friend_requests, columns=["FirstName", "LastName", "Username", "Email"])
+    print(tabulate.tabulate(new_friend_requests_df, headers='keys', tablefmt='rounded_outline', showindex=False))
+    input("Press Enter to continue...")
+
+def accessTier(userID):
+    tier = db.get_tier(userID)
+    print(f"Your current tier is: \033[1m{tier[0]}\033[0m")
+    action = inquirer.confirm(
+        message="Would you like to upgrade your tier?",
+        instruction="(y/N)",
+        long_instruction="Upgrading your tier will give you access to more features.",
+        default=False
+        ).execute()
+    if action:
+        new_tier = inquirer.select(
+            message="Select a new tier",
+            long_instruction="Cost of Silver tier : $0/month\nCost of Gold tier: $10/month\nCost of Platinum tier: $20/month",
+            choices=[
+                "Gold",
+                "Platinum"
+            ],
+        ).execute()
+        card = inquirer.text(message="Enter your card number:").execute()
+        card = inquirer.secret(message="Enter your CVV number:").execute()
+        db.update_tier(userID, new_tier)
+        print(f"Your tier has been upgraded to {new_tier}")
+        input("Press Enter to continue...")
+
 def use_app(userID):
     while True:
         clear_screen()
@@ -245,19 +292,17 @@ def use_app(userID):
         elif action == "Job search/Internship":
             accessJobs(userID)
         elif action == "InCollege Important Links":
-            print("InCollege Important Links")
-            
+            accessLinks(userID)
         elif action == "Friends":
             accessFriends(userID)
         elif action == "Tier check":
-            print("Tier check")
+            accessTier(userID)
         elif action == "Message management":
             accessMessages(userID)
         elif action == "Notifications":
-            print("Notifications")
+            accessNotifications(userID)
         else:
             continue
-
 
 if __name__ == "__main__":
     while True:

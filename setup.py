@@ -25,8 +25,12 @@ c = conn.cursor()
 #             (FriendID INTEGER PRIMARY KEY, UserID INTEGER, FriendUserID INTEGER)''')
 # conn.commit()
 
-c.execute('''CREATE TABLE messages
-            (MessageID INTEGER PRIMARY KEY, SenderID INTEGER, ReceiverID INTEGER, MessageContent text, MessageDate text, Seen boolean)''')
-conn.commit()
+# c.execute('''CREATE TABLE messages
+#             (MessageID INTEGER PRIMARY KEY, SenderID INTEGER, ReceiverID INTEGER, MessageContent text, MessageDate text, Seen boolean)''')
+# conn.commit()
+
+# c.execute('''ALTER TABLE users
+#              ADD COLUMN tier TEXT DEFAULT 'silver';''')
+# conn.commit()
 
 conn.close()

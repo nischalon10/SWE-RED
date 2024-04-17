@@ -99,3 +99,21 @@ def send_message(userID, reciverID, message):
 def mark_message_as_seen(userID, messageID):
     c.execute("UPDATE messages SET Seen = 1 WHERE ReceiverID = ? AND MessageID = ?", (userID, messageID))
     conn.commit()
+    
+def get_friend_requests(userID):
+    c.execute("""
+        SELECT DISTINCT u.FirstName, u.LastName, u.Username, u.Email
+        FROM friends f1
+        LEFT JOIN friends f2 ON f1.UserID = f2.FriendUserID
+        LEFT JOIN users u on f1.FriendUserID = u.UserID
+        WHERE f1.FriendUserID = ? AND f2.FriendUserID IS NOT ?
+    """, (userID,userID))
+    return c.fetchall()
+
+def get_tier(userID):
+    c.execute("SELECT tier FROM users WHERE UserID = ?", (userID,))
+    return c.fetchone()
+
+def update_tier(userID, tier):
+    c.execute("UPDATE users SET tier = ? WHERE UserID = ?", (tier, userID))
+    conn.commit()
